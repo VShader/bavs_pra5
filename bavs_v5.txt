@@ -1,0 +1,261 @@
+Datei:
+    bavs_v5.TXT
+
+Benoetigte Dateien:
+--------------------------------------------
+    keine
+    
+Bei der Durchfuehrung zu erzeugende Dateien:
+--------------------------------------------
+    bavs_v5prot.txt
+ 
+
+Praktikum "Verteilte Systeme" Bachelor-Versuch 5
+----------------------------------------
+
+Hinweis:
+--------
+Diese Datei gilt gleichzeitig als Vorlage fuer die Erstellung des
+Versuchsprotokolls ! Kopieren Sie diese Datei zuerst in die Datei
+  V5PROT.TXT
+welche Ihr Versuchsprotokoll wird ! Die mit :: markierten Stellen
+sind dann (in der Datei  bavs_v5prot.txt) vom Studenten auszufuellen !
+Ohne Ausfuellen dieser Stellen gibt es kein Testat !
+
+
+Studentendaten
+--------------
+Name::
+Vorname::
+Matr-Nr.::
+
+Versuch 5
+-----------------------------------------------------------------------
+
+Die ersten Teile des Versuches sind Vorbereitungsaufgaben, die Sie
+zuhause oder in den Praktikumsraeumen der FH vor dem eigentlichen 
+Termin erledigen koennen und sollen ! Die Erledigung dieser Aufgaben
+benoetigt durchaus einige Zeit und ist nicht am Termin vollstaendig 
+durchfuehrbar !
+
+
+Bei diesem Versuch werden Sie alle Teile eines Client-Server basierten 
+Systems selbst programmieren. Teile werden Sie selbst entwerfen.
+Zusaetzlich zu den bisherigen Themen behandelt dieser Versuch das
+Thema: 
+
+   "Absturz von Servern soll toleriert werden".
+
+Achten Sie darauf, die Komponenten so zu entwerfen, dass sie
+leicht testbar sind. Versuchen Sie, soweit moeglich, Klassen
+oder Methoden zu verwenden, die schon in vorherigen Versuchen verwendet
+wurden. Erweitern Sie ggf. die Klassen.
+Versuchen Sie das ganze Konzept so einfach wie moeglich zu
+realisieren. Das Projekt als solches ist, selbst in der einfachsten
+Form, bereits seh komplex !
+
+Es wird die folgende Client-Server Anwendung betrachtet:
+
+
+Clients wollen die aktuelle Zeit erfahren. Dazu rufen Sie
+die lokale Methode
+  reliable_get_time
+auf. Diese soll Ihnen die Zeit mitteilen. Dazu fragt 
+"reliable_get_time" einen Zeit-Server nach der aktuellen Zeit.
+Es soll mehrere Zeit-Server im System geben. Eventuell stuerzen
+Zeit-server ab, eventuell werden Sie neu gestartet. Da beim
+Start eines Clients nicht bekannt ist, welche(r) Zeitserver
+derzeit verfuegbar sind, wird ein zentrale Registry-Server
+eingerichtet. Wenn ein Client nicht weiss, welchen Zeit-Server
+er nach der Zeit fragen kann, kann er den Registry-Server
+nach einem Zeit-Server fragen. Wenn ein Zeitserver gestartet
+(oder nach einem Absturz neu gestartet) wird, registriert er 
+sich beim Registry-Server als verfuegbar.
+
+Es wird davon ausgegangen, dass der Registry-Server nie ausfaellt !
+
+
+***********************************************************************
+
+Vorbereitung-Aufgabe 5.1 : 
+
+Zeichnen Sie ein Interaktionsmodell, aus dem hervorgeht,
+welche Komponenten in Beziehung zueinander treten und welche Dienste
+jeweils erbracht werden. 
+
+Achtung:
+Es gibt verschiedenste Varianten. Waehlen Sie eine Variante aus, die
+einfach zu realisieren ist. Insbesondere sollt die Zahl der verschiedenen
+Interaktionsmöglichkeiten und die Zahl der  verschiedenen Nachrichtentypen
+klein sein !
+
+
+Vorbereitung-Aufgabe 5.2 : 
+
+Warum ist es nicht sinnvoll, dass die Clients Zeit-Anfragen 
+einfach an den Registry-Server schicken, der sie an einen
+verfuegbaren Zeit-Server weiterleitet ?
+
+Antwort::
+
+
+
+***********************************************************************
+ 
+Es werden nun einige Randbedingungen festgelegt, die genauer beschreiben, 
+was fuer ein System Sie entwerfen und implementieren sollen.
+
+a) Alle Nachrichten werden via UDP versandt. Das Versenden geschieht
+wieder unter Verwendung eines network-simulator Objekts,
+das streuende Nachrichtenzeit und Nachrichtenverlust simuliert.
+Als Parameter bei der Vorfuehrung sollen benutzt werden:
+  p_loss=0.2 ;
+  p_send=0.3 ;
+
+b) Alle Komponenten (Registry-Server, Client, Zeit-Server)
+sollen Namen erhalten (Maximal 50 Zeichen, ASCII ohne Sonderzeichen)
+damit man Sie mit Testausdrucken gut identifizieren kann.
+
+c) Ein Zeit-Server soll folgendes leisten:
+Er verfuegt ueber eine einfache Oberflaeche zur Bedienung und Anzeige.
+
+Es gibt zwei Buttons:
+
+  Button "START" :
+  Bei Betaetigen dieses Buttons wird der Zeit-Server Prozess gestartet.
+  Der Zeitserver registriert sich beim Registry-Server und beantwortet
+  danach eingehende Zeit-Anfragen. Als eigene Uhr verwendet er die JAVA 
+  Systemzeit.
+
+  Button "SHUTDOWN" ;
+  Betaetigen dieses Buttons simuliert des Herunterfahrens des Zeit-Servers.
+  Danach reagiert der Zeit-Server nicht mehr auf eingehende Anfragen.
+  Achtung: Sie sollten nicht (!!) versuchen den Server-Thread zu stoppen
+  und wieder zu satrten. Programmieren Sie den "SHUTDOWN"-Zustand einfach
+  durch ein Flag, welches diesen signalisiert. Ist es gesetzt, verwirft
+  der Server einfach eingehende Requests.
+
+Der Zeit-Server teilt bei der Registrierung dem Registry-Server 
+  seine IP-Nummer,
+  seine Port-Nummer und 
+  seinen Namen mit.
+
+Zeitanfragen beantwortet ein Zeit-Server durch Mitteilung seines Namens 
+und seiner Uhrzeit.
+
+In einem Ausgabefenster berichtet der Zeitserver ueber all seine 
+Aktivitaeten, damit man verfolgen kann, wer den Zeit-Server wann
+gefragt hat und aehnliches. Jeder einzelne Zeitserver soll
+single-threaded programmiert werden.
+
+
+d) Der Registry-Server fuehrt eine Liste der Zeit-Server von welchen er
+annimmt, dass sie verfuegbar sind. Bei der Registrierung fuegt er den 
+sich registrierenden Zeitserver dieser Liste hinzu. Fuer jeden verfuegbaren 
+Zeit-Server speichert er IP-Nummer, Port-Nummer und Namen.
+Wenn der Registry-Server nach einem Zeitserver gefragt wird, teilt er
+dem Client ein Element der Liste mit. 
+
+In einem Ausgabefenster berichtet der Registry-Server ueber all seine 
+Aktivitaeten, damit man verfolgen kann, wer den Registry-Server wonach
+gefragt hat und aehnliches. Ab und zu soll der Registry-Server selbstaendig
+eine Liste der verfuegbaren Zeit-Server anzeigen. Der Registry-Server soll
+single-threaded programmiert werden.
+
+
+e) Clients sollen ein Ausgabefenster besitzen, in welchem Sie ueber
+Ihre Aktivitaeten berichten. (z.B. welchen Zeitserver sie wann fragen
+und welche Antwort sie erhalten haben. Jeder Client soll selbstaendig
+(z.B. in Sekundenabstand) nach der Zeit fragen.
+Beim Start eines Clients ist diesem kein Zeit-Server bekannt. Ihm ist 
+einzig und allein die IP-Nummer und Port-Nummer des Registry-Servers bekannt.
+
+f) Im Gesamt-Ausbau sollen mehrere Clients staendig Zeit-Server fragen. Waehrend
+sie das tun, werden Zeit-Server heruntergefahren und gestartet. Das System muss
+dieses alles ueberstehen, auch wenn Nachrichten verloren gehen und Nachrichten 
+verzoegert werden.
+
+g) Wenn Sie zusaetzliche Informationen in Nachrichten verschicken wollen, oder
+in Datenstrukturen zusaetzliche Informationen speichern wollen, sind Sie frei, 
+dies zu tun !
+
+***********************************************************************
+
+Vorbereitung-Aufgabe 5.3 : 
+
+Ueberlegen Sie sich, wer wie feststellt, ob ein Zeit-Server
+nicht verfuegbar ist. Was ist dann zu tun ? Gibt es mehrere Konzepte,
+die Nicht-Verfuegbarkeit festzustellen ? Welches realisieren Sie
+und warum ?
+
+Antwort::
+
+ 
+Praktikums-Aufgabe 5 : 
+
+Realisieren Sie dieses System !
+
+Achtung:
+
+Gehen Sie schrittweise vor. Testen Sie alle Einzelkomponenten.
+Legen Sie zuerst fest, was fuer Nachrichten sie verschicken wollen.
+Legen Sie das zugehoerige Marshalling fest, verwenden Sie wenn moeglich
+die byte_buffer Klasse oder eine Erweiterung davon.
+
+Gehen Sie schrittweise vor. Testen Sie alle Einzelkomponenten.
+
+Eine moegliche Reihenfolge:
+
+  Registry-Dienst spezifizieren
+  Registry-Server implementieren
+
+  Zeit-Server Dienst spezifizieren
+    Zeit-Server Registrierung implementieren und testen
+    Zeit-Server Zeit-Dienst implementieren
+
+  Client implementieren
+      Methode reliable_get_time designen
+    Frage nach Zeit-Server beim Registry-Server testen.
+    Frage nach Zeit bei einem Zeit-Server Testen.
+    
+Testen Sie Ihren Dienst ! Spielen Sie mit dem System !
+
+***********************************************************************
+
+Bei dieser Aufgabe kann man diskutieren, welche Korrektheitsanforderung
+die Methode 
+  reliable_get_time
+erfuellen soll. Wenn Sie alle Komponenten in einem Prozess ablaufen
+lassen, verfuegen alle Zeit-Server ueber die Systemzeit als globale
+Zeit. Das ist mehr, als ein verteiltes System im Normalfall bieten
+kann, aber wir koennen das ja mal als Ausgangspunkt nehmen. 
+(Die Realitaet kann dann nur schlechter sein !)
+
+
+  Es sei A das Ereignis, dass "reliable_get_time" aufgerufen wird
+  und erfolgreich endet. Dabei liefert A die (von einem Zeit_Server 
+  erhaltene) Zeit t_A als Resultat.
+
+  Es sei B das Ereignis, dass "reliable_get_time" aufgerufen wird
+  und erfolgreich endet. Dabei liefert B die (von einem Zeit_Server 
+  erhaltene) Zeit t_B als Resultat.
+
+  Mit   -->  wird die "geschehen vor" Relation bezeichnet.
+
+Welche der folgenden Korrektheitsforderungen erfuellt ihr System:
+
+1)  Wenn A --> B gilt, dann gilt T_A <= T_B
+
+2)  Wenn innerhalb eines Clients A --> B gilt, dann gilt T_A <= T_B
+
+Welche der Korrektheitsforderungen ist leichter zu erfuellen ?  
+
+Weiter kann man diskutieren soll, welche der in diesem
+System vorkommenden Dienste "Idempotent" realisiert sind. Ueberlegen
+Sie sich, ob und wo der Begriff hier eine Rolle spielt !
+
+***********************************************************************
+Ende Versuch 5
+***********************************************************************
+
+
