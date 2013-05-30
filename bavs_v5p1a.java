@@ -337,66 +337,47 @@ class VsComm
 
 
 /* ----------------------------------------------------------------*/
-/* define magic numbers for use as commands in sms_message */
-
-final class Constants
-{
-static int request_store=1 ;
-static int request_delete=2 ;
-static int request_list=3 ;
-static int request_find=4 ;
-static int request_first=5 ;
-
-static int answer_done=11 ;
-static int answer_found=12 ;
-static int answer_notfound=13 ;
-}
-
-
 /* ----------------------------------------------------------------*/
 
 
-class SmsMessage{
+class TimeMessage{
 
-int id ;        // message id given from request
-int command ;   // see constants
-int number ;    // phone number
-String sms ;    // SMS for this number
+int id ;				// message id given from request
+long time ;   			// server time
+String serverName ;
 
 ByteBuffer buffer=new ByteBuffer() ;
 
   public String toString()
-  { return("#"+number+" SMS:"+sms+"\ncommand="+command+" id="+id) ; }
+  { return("#"+serverName+" Time:"+time+" id="+id) ; }
 
-  SmsMessage()
-  { number=123456 ;  sms="empty" ;  command=123  ;  id=456 ; }
+  TimeMessage()
+  { time=0;  serverName="empty";  id=456; }
 
   void packToBuffer()
   {
   buffer.reset() ;
   buffer.putInt(id);
-  buffer.putInt(command);
-  buffer.putInt(number);
-  buffer.putString(sms);
+  buffer.putString(serverName);
+  buffer.putLong(time);
   }
 
   void unpackFromBuffer()
   {
   buffer.reset() ;
   id=buffer.getInt() ;
-  command=buffer.getInt() ;
-  number=buffer.getInt() ;
-  sms=buffer.getString() ;
+  serverName=buffer.getString();
+  time=buffer.getLong();
   }
 }
 /* ----------------------------------------------------------------*/
 
-class sms_server extends Thread
+class time_server extends Thread
 { NetworkSimulator network ;
   TreeMap sms_map=new TreeMap() ;
   VsComm server_comm ;
-  SmsMessage request_message=new SmsMessage() ;
-  SmsMessage answer_message=new SmsMessage() ;
+  TimeMessage request_message=new TimeMessage() ;
+  TimeMessage answer_message=new TimeMessage() ;
   OutputFrame out ;
 
   InetAddress answer_address ;
@@ -405,7 +386,7 @@ class sms_server extends Thread
   String String_to_length(String s , int l)
     { while(s.length()<l) s=s+" " ; return(s) ; }
 
-   sms_server(NetworkSimulator n , int  server_port )
+   time_server(NetworkSimulator n , int  server_port )
      {
      network=n ;
      sms_map.put(new Integer(123),"SMS123") ;
@@ -507,8 +488,8 @@ class SmsClient {
   InetAddress serverAddress ;
   int server_port ;
   int my_port ;
-  SmsMessage TX_message=new SmsMessage() ;
-  SmsMessage RX_message=new SmsMessage() ;
+  TimeMessage TX_message=new TimeMessage() ;
+  TimeMessage RX_message=new TimeMessage() ;
   VsComm client_socket ;
   OutputFrame out ;
 
@@ -733,110 +714,17 @@ ClientWindow(  String title ,
 /* ----------------------------------------------------------------*/
 /* ----------------------------------------------------------------*/
 
-
-class copy_window extends Frame
-{
-
-TextArea the_text=new TextArea() ;
-Font listFont=new Font("Monospaced",Font.PLAIN,12) ;
-String last_line ;
-SmsClient client_a ;
-SmsClient client_b ;
-
- void checkit()
-    { if ( the_text.getCaretPosition()>25000 )
-      { the_text.replaceRange("-- TEXT DELETED --\n",0,5000); }
-    }
-
-  void listln(String s)
-    {  checkit() ; the_text.append(s); the_text.append("\n") ; last_line="" ;}
-
-  void list(String s) {
-       checkit() ; the_text.append(s);
-       last_line=last_line+s ;
-       if ( last_line.length()>128)
-          { the_text.append("\\LF\n") ; last_line="" ; }
-      }
-
-
-copy_window(  String title ,
-                NetworkSimulator network ,
-                InetAddress server_address_a ,
-                int server_port_a ,
-                int my_own_port_a ,
-                InetAddress server_address_b ,
-                int server_port_b ,
-                int my_own_port_b )
-
-
-   { super(title) ;
-   setSize(300,170) ;
-   Panel pan_a=new Panel() ;
-   Button b_to_a_but=new Button("COPY B -> A") ;
-   Button a_to_b_but=new Button("COPY A -> B") ;
-   pan_a.add(b_to_a_but)  ;
-   pan_a.add(a_to_b_but)  ;
-   b_to_a_but.addActionListener(new b_to_a_listener());
-   a_to_b_but.addActionListener(new a_to_b_listener());
-   setLayout(new BorderLayout()) ;
-   add("Center",the_text) ;
-   add("South",pan_a) ;
-   // deprecation    show();
-    setVisible(true) ;
-   OutputFrame out=new OutputFrame("COPY AB") ;
-   client_a=new SmsClient(server_address_a,server_port_a,my_own_port_a,network,out) ;
-   client_b=new SmsClient(server_address_b,server_port_b,my_own_port_b,network,out) ;
-   }
-
-  void copy_x_y(SmsClient x , SmsClient y)
-    {
-	  long timeStart = System.currentTimeMillis();
-	  while(true) {
-		  String tmpName;
-		  int tmpMatrikel;
-		  x.first_sms_request() ;
-	      //matrField.setText(""+x.RX_message.number);
-	      if (x.RX_message.command==Constants.answer_notfound) break;
-	      tmpName = x.RX_message.sms;
-	      tmpMatrikel = x.RX_message.number;
-	      y.enter_sms_request(tmpMatrikel,tmpName);
-	      x.delete_sms_request(tmpMatrikel);
-	  }
-	  long timeFinish = System.currentTimeMillis();
-	  x.list_request();
-	  y.list_request();
-	  System.out.println("Process finished after: " +((timeFinish-timeStart)/1000) +"s");
-    }
-
-  class b_to_a_listener implements ActionListener
-    { public void actionPerformed(ActionEvent e)
-       {
-       listln("B->A") ;
-       copy_x_y(client_b,client_a) ;
-       }
-    }
-
-  class a_to_b_listener implements ActionListener
-    { public void actionPerformed(ActionEvent e)
-      {
-      listln("A -> B") ;
-      copy_x_y(client_a,client_b) ;
-      }
-    }
-
-} // end class copy_window
-
-/* ----------------------------------------------------------------*/
-
 class ClientServerTest {
+  InetAddress regetry_server_address;
   InetAddress server_a_address ;
   InetAddress server_b_address ;
   NetworkSimulator global_network ;
+  int regetry_server_port;
   int server_a_port ;
   int server_b_port ;
 
 
-void testAB()
+void start()
   {
    global_network=new NetworkSimulator() ;
    global_network.p_loss=0.2 ;
@@ -845,11 +733,11 @@ void testAB()
    global_network.start();
 
    server_a_port=2345 ;
-   sms_server server_a=new sms_server(global_network,server_a_port) ;
+   time_server server_a=new time_server(global_network,server_a_port) ;
    server_a.start() ;
 
    server_b_port=2346 ;
-   sms_server server_b=new sms_server(global_network,server_b_port) ;
+   time_server server_b=new time_server(global_network,server_b_port) ;
    server_b.start() ;
 
    try{ server_a_address = InetAddress.getByName("127.0.0.1");   }
@@ -859,15 +747,6 @@ void testAB()
    try{ server_b_address = InetAddress.getByName("127.0.0.1");   }
    catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
    ClientWindow window_b=new ClientWindow("CLIENT-B",global_network,server_b_address,server_b_port,4556) ;
-
-
-   copy_window window_c=new copy_window("COPY",global_network,
-        server_a_address,server_a_port,4557,
-        server_b_address,server_b_port,4558) ;
-   
-   for(int i=100050; i<100070; i++) {
-	   server_a.sms_map.put(new Integer(i),"Test: "+i) ;
-   }
   
 
   }
@@ -885,6 +764,6 @@ public class bavs_v5p1a {
 	public static void main(String[] args) {
 	    System.out.println("Hello Verteilte Systeme") ;
 	    ClientServerTest test=new ClientServerTest() ;
-	    test.testAB() ;
+	    test.start() ;
 	    }
 }
