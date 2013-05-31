@@ -379,6 +379,8 @@ class time_server extends Thread
   TimeMessage request_message=new TimeMessage() ;
   TimeMessage answer_message=new TimeMessage() ;
   OutputFrame out ;
+  String serverName;
+  boolean running;
 
   InetAddress answer_address ;
   int answer_port ;
@@ -386,13 +388,15 @@ class time_server extends Thread
   String String_to_length(String s , int l)
     { while(s.length()<l) s=s+" " ; return(s) ; }
 
-   time_server(NetworkSimulator n , int  server_port )
+   time_server(NetworkSimulator n , int  server_port, String serverName )
      {
+	 running = true;
      network=n ;
+     this.serverName=serverName;
      sms_map.put(new Integer(123),"SMS123") ;
      sms_map.put(new Integer(server_port),"is my port") ;
      sms_map.put(new Integer(4711),"SMS von 4711") ;
-     out=new OutputFrame("SERVER at port "+server_port) ;
+     out=new OutputFrame(serverName+" at port "+server_port) ;
      server_comm=new VsComm(server_port, network) ;
      out.listln("Server Socket Start..");
      }
@@ -402,83 +406,93 @@ class time_server extends Thread
     out.listln("Server Start..");
 
     /* main server loop */
-    while(true) {
+    while(running) {
  //      out.list("wait: ");
-       server_comm.receive(0) ; // wait for a request
+      server_comm.receive(0) ; // wait for a request
 //       out.list("GOT:");
-       request_message.buffer.contents=server_comm.inDatagram.getData() ;
-       request_message.unpackFromBuffer() ;
+      request_message.buffer.contents=server_comm.inDatagram.getData() ;
+      request_message.unpackFromBuffer() ;
 //       out.listln("REQUEST:\n"+request_message);
 
        /* prepare answer message already */
-       request_message.id+=100000 ;
-       answer_message=request_message ;
-       answer_address=server_comm.inDatagram.getAddress() ;
-       answer_port=server_comm.inDatagram.getPort() ;
+      request_message.id+=100000 ;
+      answer_message=request_message ;
+      answer_address=server_comm.inDatagram.getAddress() ;
+      answer_port=server_comm.inDatagram.getPort() ;
 
-       /* do request specific actions */
-       if (request_message.command==Constants.request_store)
-         { out.listln("ENTER("+request_message.number+","+request_message.sms+")");
-         sms_map.put(new Integer(request_message.number),request_message.sms) ;
-         answer_message.command=Constants.answer_done ;
-         }
-       else if (request_message.command==Constants.request_delete)
-         { out.listln("DELETE("+request_message.number+")");
-         sms_map.remove(new Integer(request_message.number)) ;
-         answer_message.command=Constants.answer_done ;
-         }
-      else if (request_message.command==Constants.request_list)
-         { out.listln("LIST IS:") ;
-           Collection c=sms_map.keySet() ;  Iterator i=c.iterator() ;
-           while(i.hasNext())
-             {
-             Object o=i.next() ;
-             out.listln( String_to_length(o.toString(),8)+" : "
-                 +String_to_length(sms_map.get(o).toString(),20)+" //") ;
-             }
-           out.listln("END OF LIST --------") ;
-          answer_message.command=Constants.answer_done ;
-         }
-       else if (request_message.command==Constants.request_first)
-         { Collection c=sms_map.keySet() ;  Iterator i=c.iterator() ;
-           if(i.hasNext())
-             {
-             Object o=i.next() ;
-             out.listln("First is:"+String_to_length(o.toString(),8)+" : "
-                 +String_to_length(sms_map.get(o).toString(),20)+" //") ;
-             answer_message.number=((Integer)o).intValue() ;
-             answer_message.sms=(String) sms_map.get(o) ;
-             answer_message.command=Constants.answer_done ;
-             }
-            else
-             {
-             answer_message.sms="<<EMPTY>>" ;
-             answer_message.command=Constants.answer_notfound ;
-             }
-         }
-      else if (request_message.command==Constants.request_find)
-         { out.listln("FIND("+request_message.number+")");
-         String s=new String("") ;
-         if (sms_map.containsKey(new Integer(request_message.number)))
-           { answer_message.command=Constants.answer_found ;
-             answer_message.sms=(String) sms_map.get(new Integer(request_message.number)) ;
-           }
-          else
-           { answer_message.command=Constants.answer_notfound ;
-             answer_message.sms="<<UNKNOWN>>" ;
-           } ;
-         }
-
-      /* and send answer back */
+       /* send time */
+      answer_message.serverName = serverName;
+      answer_message.time = System.currentTimeMillis();
       answer_message.packToBuffer();
       server_comm.OutBuffer=answer_message.buffer.contents ;
       server_comm.message_id=answer_message.id;
       server_comm.send(answer_port,answer_address);
-      }
-   }
+      out.listln("SEND ("+answer_message.serverName +"," +answer_message.time/1000 +"s)");
+    }
+  }
 }
 
+/* ----------------------------------------------------------------*/
 
+class Regestry_server extends Thread
+{ NetworkSimulator network ;
+  TreeMap sms_map=new TreeMap() ;
+  VsComm server_comm ;
+  TimeMessage request_message=new TimeMessage() ;
+  TimeMessage answer_message=new TimeMessage() ;
+  OutputFrame out ;
+  String serverName;
+  boolean running;
+
+  InetAddress answer_address ;
+  int answer_port ;
+
+  String String_to_length(String s , int l)
+    { while(s.length()<l) s=s+" " ; return(s) ; }
+
+   Regestry_server(NetworkSimulator n , int  server_port, String serverName )
+     {
+	 running = true;
+     network=n ;
+     this.serverName=serverName;
+     sms_map.put(new Integer(123),"SMS123") ;
+     sms_map.put(new Integer(server_port),"is my port") ;
+     sms_map.put(new Integer(4711),"SMS von 4711") ;
+     out=new OutputFrame(serverName+" at port "+server_port) ;
+     server_comm=new VsComm(server_port, network) ;
+     out.listln("Server Socket Start..");
+     }
+
+  public void run()
+  { System.out.println("VS_server.run executed");
+    out.listln("Server Start..");
+
+    /* main server loop */
+    while(running) {
+ //      out.list("wait: ");
+      server_comm.receive(0) ; // wait for a request
+//       out.list("GOT:");
+      request_message.buffer.contents=server_comm.inDatagram.getData() ;
+      request_message.unpackFromBuffer() ;
+//       out.listln("REQUEST:\n"+request_message);
+
+       /* prepare answer message already */
+      request_message.id+=100000 ;
+      answer_message=request_message ;
+      answer_address=server_comm.inDatagram.getAddress() ;
+      answer_port=server_comm.inDatagram.getPort() ;
+
+       /* send time */
+      answer_message.serverName = serverName;
+      answer_message.time = System.currentTimeMillis();
+      answer_message.packToBuffer();
+      server_comm.OutBuffer=answer_message.buffer.contents ;
+      server_comm.message_id=answer_message.id;
+      server_comm.send(answer_port,answer_address);
+      out.listln("SEND ("+answer_message.serverName +"," +answer_message.time/1000 +"s)");
+    }
+  }
+}
 
 
 /* ----------------------------------------------------------------*/
@@ -733,11 +747,11 @@ void start()
    global_network.start();
 
    server_a_port=2345 ;
-   time_server server_a=new time_server(global_network,server_a_port) ;
+   time_server server_a=new time_server(global_network,server_a_port, "Server A") ;
    server_a.start() ;
 
    server_b_port=2346 ;
-   time_server server_b=new time_server(global_network,server_b_port) ;
+   time_server server_b=new time_server(global_network,server_b_port, "Server B") ;
    server_b.start() ;
 
    try{ server_a_address = InetAddress.getByName("127.0.0.1");   }

@@ -90,13 +90,22 @@ Interaktionsmöglichkeiten und die Zahl der  verschiedenen Nachrichtentypen
 klein sein !
 
 
+				fragt nach Time_Server
+		Client ------------------------> Regestry_Server
+	fragt	|	<-----------------------		^
+	nach	|	sendet Time_Sever IP und Port	|
+	Zeit	v									|
+		Time_Server ----------------------------|
+					sendet seine IP und Port
+					
+					
 Vorbereitung-Aufgabe 5.2 : 
 
 Warum ist es nicht sinnvoll, dass die Clients Zeit-Anfragen 
 einfach an den Registry-Server schicken, der sie an einen
 verfuegbaren Zeit-Server weiterleitet ?
 
-Antwort::
+Antwort::Wenn die gesammte kummunikation über nur einen Server läuft hat man einen bottleneck.
 
 
 
