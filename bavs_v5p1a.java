@@ -7,6 +7,7 @@ import java.util.* ;
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.io.IOException;
 
 
@@ -370,6 +371,40 @@ ByteBuffer buffer=new ByteBuffer() ;
   time=buffer.getLong();
   }
 }
+
+class ReportMessage{
+
+int id ;				// message id given from request
+String serverName ;
+String ip;				// server ip
+int port ;   			// server port
+
+ByteBuffer buffer=new ByteBuffer() ;
+
+  public String toString()
+  { return("#"+serverName+" IP:"+" Port:"+port+" id="+id) ; }
+
+  ReportMessage()
+  { id=456; serverName="empty"; ip="127.0.0.1"; port=0; }
+
+  void packToBuffer()
+  {
+  buffer.reset() ;
+  buffer.putInt(id);
+  buffer.putString(serverName);
+  buffer.putString(ip);
+  buffer.putInt(port);
+  }
+
+  void unpackFromBuffer()
+  {
+  buffer.reset() ;
+  id=buffer.getInt() ;
+  serverName=buffer.getString();
+  ip=buffer.getString();
+  port=buffer.getInt();
+  }
+}
 /* ----------------------------------------------------------------*/
 
 class time_server extends Thread
@@ -438,6 +473,88 @@ class time_server extends Thread
         out.listln("SEND ("+answer_message.serverName +"," +answer_message.time/1000 +"s)");
     }
 }
+
+
+/* ----------------------------------------------------------------*/
+/* ----------------------------------------------------------------*/
+
+class TimeWindow extends Frame {
+
+	  TextArea the_text=new TextArea() ;
+	  Font listFont=new Font("Monospaced",Font.PLAIN,12) ;
+	  String last_line ;
+	  TimeClient client ;
+	  TextField nameField=new TextField(20) ;
+	  TextField matrField=new TextField(8) ;
+
+	/* my own list window outout functions */
+
+	  void checkit() { 
+	    if ( the_text.getCaretPosition()>25000 )
+	      { the_text.replaceRange("-- TEXT DELETED --\n",0,5000); }
+	    }
+
+	  void listln(String s) {
+	    checkit() ; the_text.append(s); the_text.append("\n") ; last_line="" ;}
+
+	  void list(String s) {
+	       checkit() ; the_text.append(s);
+	       last_line=last_line+s ;
+	       if ( last_line.length()>128)
+	          { the_text.append("\\LF\n") ; last_line="" ; }
+	      }
+
+	/* real stuff starts here ....                                   */
+
+TimeWindow(  String title ,
+      NetworkSimulator network ,
+      InetAddress server_address ,
+      int server_port ,
+      int my_own_port ) {
+super(title) ;
+
+/* GUI related things ... */
+setSize(500,170) ;
+Panel pan_a=new Panel() ;
+Button enter_but=new Button("ENTER") ;
+pan_a.add(enter_but)  ;
+
+/* connect buttons with actions */
+enter_but.addActionListener(new enter_listener());
+
+/* global layout */
+Label ln=new Label("SMS:") ;
+Label lm=new Label("NUMBER:") ;
+Panel pan_b=new Panel() ;
+pan_b.add(lm) ;  pan_b.add(matrField) ;
+pan_b.add(ln) ;  pan_b.add(nameField) ;
+setLayout(new BorderLayout()) ;
+add("Center",the_text) ;
+add("South",pan_a) ;
+add("North",pan_b) ;
+//deprecation    show();
+setVisible(true) ;
+/* supply a listing window to the client_object */
+OutputFrame out=new OutputFrame("history of "+title) ;
+
+/* and install client */
+//client=new TimeClient(server_address,server_port,my_own_port,network,out) ;
+}
+
+class enter_listener implements ActionListener
+{ public void actionPerformed(ActionEvent e)
+{ listln("ENTER") ;
+String name=nameField.getText() ;
+listln("SMS="+name) ;
+String s=matrField.getText() ;
+int matrikel =Integer.valueOf(s).intValue() ;
+client.time_request();
+}
+}
+
+
+}   // end class time_window
+
 
 /* ----------------------------------------------------------------*/
 
@@ -562,87 +679,7 @@ class TimeClient {
 /* ----------------------------------------------------------------*/
 /* ----------------------------------------------------------------*/
 
-class RegistryWindow extends Frame {
 
-	  TextArea the_text=new TextArea() ;
-	  Font listFont=new Font("Monospaced",Font.PLAIN,12) ;
-	  String last_line ;
-	  TimeClient client ;
-	  TextField nameField=new TextField(20) ;
-	  TextField matrField=new TextField(8) ;
-
-	/* my own list window outout functions */
-
-	  void checkit() { 
-	    if ( the_text.getCaretPosition()>25000 )
-	      { the_text.replaceRange("-- TEXT DELETED --\n",0,5000); }
-	    }
-
-	  void listln(String s) {
-	    checkit() ; the_text.append(s); the_text.append("\n") ; last_line="" ;}
-
-	  void list(String s) {
-	       checkit() ; the_text.append(s);
-	       last_line=last_line+s ;
-	       if ( last_line.length()>128)
-	          { the_text.append("\\LF\n") ; last_line="" ; }
-	      }
-
-	/* real stuff starts here ....                                   */
-
-RegistryWindow(  String title ,
-        NetworkSimulator network ,
-        InetAddress server_address ,
-        int server_port ,
-        int my_own_port ) {
-super(title) ;
-
-/* GUI related things ... */
-setSize(500,170) ;
-Panel pan_a=new Panel() ;
-Button enter_but=new Button("ENTER") ;
-pan_a.add(enter_but)  ;
-
-/* connect buttons with actions */
-enter_but.addActionListener(new enter_listener());
-
-/* global layout */
-Label ln=new Label("SMS:") ;
-Label lm=new Label("NUMBER:") ;
-Panel pan_b=new Panel() ;
-pan_b.add(lm) ;  pan_b.add(matrField) ;
-pan_b.add(ln) ;  pan_b.add(nameField) ;
-setLayout(new BorderLayout()) ;
-add("Center",the_text) ;
-add("South",pan_a) ;
-add("North",pan_b) ;
-// deprecation    show();
-setVisible(true) ;
-/* supply a listing window to the client_object */
-OutputFrame out=new OutputFrame("history of "+title) ;
-
-/* and install client */
-//client=new TimeClient(server_address,server_port,my_own_port,network,out) ;
-}
-
-class enter_listener implements ActionListener
-{ public void actionPerformed(ActionEvent e)
-{ listln("ENTER") ;
-  String name=nameField.getText() ;
-  listln("SMS="+name) ;
-  String s=matrField.getText() ;
-  int matrikel =Integer.valueOf(s).intValue() ;
-  client.time_request();
-}
-}
-
-
-}   // end class registry_window
-
-
-
-/* ----------------------------------------------------------------*/
-/* ----------------------------------------------------------------*/
 
 class ClientServerTest {
   InetAddress regetry_server_address;
