@@ -572,10 +572,11 @@ client.time_request();
 
 class Regestry_server extends Thread
 { NetworkSimulator network ;
-  TreeMap sms_map=new TreeMap() ;
+  TreeMap server_map=new TreeMap();
+  int nextServer;
   VsComm server_comm ;
-  TimeMessage request_message=new TimeMessage() ;
-  TimeMessage answer_message=new TimeMessage() ;
+  ReportMessage request_message=new ReportMessage() ;
+  ReportMessage answer_message=new ReportMessage() ;
   OutputFrame out ;
   String serverName;
   boolean running;
@@ -591,9 +592,7 @@ class Regestry_server extends Thread
 	 running = true;
      network=n ;
      this.serverName=serverName;
-     sms_map.put(new Integer(123),"SMS123") ;
-     sms_map.put(new Integer(server_port),"is my port") ;
-     sms_map.put(new Integer(4711),"SMS von 4711") ;
+     nextServer=0;
      out=new OutputFrame(serverName+" at port "+server_port) ;
      server_comm=new VsComm(server_port, network) ;
      out.listln("Server Socket Start..");
@@ -611,22 +610,67 @@ class Regestry_server extends Thread
       request_message.buffer.contents=server_comm.inDatagram.getData() ;
       request_message.unpackFromBuffer() ;
 //       out.listln("REQUEST:\n"+request_message);
+      if(request_message.valid) addServer();
+      else deleteServer();
 
-       /* prepare answer message already */
-      request_message.id+=100000 ;
+    }
+  }
+  
+  void addServer()	{
+	  server_map.put(new String(request_message.serverName), new serverContainer(request_message.serverName,
+			  																	request_message.ip, request_message.port));
+	  request_message.id+=100000 ;
       answer_message=request_message ;
+	  answer_message.valid = false;			// only to show the time server that it was added;
       answer_address=server_comm.inDatagram.getAddress() ;
       answer_port=server_comm.inDatagram.getPort() ;
 
-       /* send time */
       answer_message.serverName = serverName;
-      answer_message.time = System.currentTimeMillis();
       answer_message.packToBuffer();
       server_comm.OutBuffer=answer_message.buffer.contents ;
       server_comm.message_id=answer_message.id;
       server_comm.send(answer_port,answer_address);
-      out.listln("SEND ("+answer_message.serverName +"," +answer_message.time/1000 +"s)");
-    }
+      out.listln("SEND ("+answer_message.serverName +"," +"s)");
+
+  }
+  
+  void deleteServer()	{
+	  server_map.remove(new String(serverName));
+	  int counter=0;
+	  Collection c=server_map.keySet(); Iterator i=c.iterator();
+	  while(i.hasNext())
+	  {
+		  if( counter == nextServer%server_map.size())
+		  {
+			  serverContainer o=(serverContainer)i.next();
+			  request_message.id+=100000 ;
+		      answer_message=request_message ;
+			  answer_message.valid = true;			// only to show the client that this is the answer.
+		      answer_address=server_comm.inDatagram.getAddress() ;
+		      answer_port=server_comm.inDatagram.getPort() ;
+
+		      answer_message.serverName = o.serverName;
+		      answer_message.ip = o.ip;
+		      answer_message.port = o.port;
+		      answer_message.packToBuffer();
+		      server_comm.OutBuffer=answer_message.buffer.contents ;
+		      server_comm.message_id=answer_message.id;
+		      server_comm.send(answer_port,answer_address);
+		      out.listln("SEND ("+answer_message.serverName +"," +"s)");
+		      return;
+		  }
+		  counter++;
+	  }
+  }
+  
+  class serverContainer	{
+	  public String serverName;
+	  public String ip;
+	  public int port;
+	  public serverContainer(String sN, String i, int p)	{
+		  serverName=sN; ip=i; port=p;
+	  }
+	  
   }
 }
 
@@ -744,7 +788,7 @@ class ClientServerTest {
   InetAddress server_a_address ;
   InetAddress server_b_address ;
   NetworkSimulator global_network ;
-  int regetry_server_port;
+  int regestry_server_port;
   int server_a_port ;
   int server_b_port ;
 
@@ -757,21 +801,25 @@ void start()
 
    global_network.start();
 
-   server_a_port=2345 ;
-   time_server server_a=new time_server(global_network,server_a_port, "Server A") ;
-   server_a.start() ;
+//   server_a_port=2345 ;
+//   time_server server_a=new time_server(global_network,server_a_port, "Server A") ;
+//   server_a.start() ;
+//
+//   server_b_port=2346 ;
+//   time_server server_b=new time_server(global_network,server_b_port, "Server B") ;
+//   server_b.start() ;
 
-   server_b_port=2346 ;
-   time_server server_b=new time_server(global_network,server_b_port, "Server B") ;
-   server_b.start() ;
-
+   regestry_server_port=1337;
+   Regestry_server regServer=new Regestry_server(global_network, regestry_server_port, "Regerstry Server");
+   regServer.start();
+   
    try{ server_a_address = InetAddress.getByName("127.0.0.1");   }
    catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
-   TimeClient client_a=new TimeClient("Client A", global_network, server_a_address,server_a_port,4555) ;
+   TimeClient client_a=new TimeClient("Client A", global_network, server_a_address,regestry_server_port,4555) ;
 
    try{ server_b_address = InetAddress.getByName("127.0.0.1");   }
    catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
-   TimeClient client_b=new TimeClient("Client B", global_network, server_b_address,server_b_port,4556) ;
+   TimeClient client_b=new TimeClient("Client B", global_network, server_b_address,regestry_server_port,4556) ;
   
 
   }
