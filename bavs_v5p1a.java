@@ -446,6 +446,7 @@ class time_server extends Thread
 	 running = true;
      network=n ;
      this.serverName=serverName;
+     ip = server_address;
      port=server_port;
      regestryIp = regestry_server_address;
      regestryPort = regestry_server_port;
@@ -457,6 +458,7 @@ class time_server extends Thread
   public void run()
   { System.out.println("VS_server.run executed");
     out.listln("Server Start..");
+    sendIp();
 
     while(true)	{
 //    if(running) Report to the RegestryServer	
@@ -670,7 +672,7 @@ class Regestry_server extends Thread
 	  {
 		  if( counter == nextServer%server_map.size())
 		  {
-			  serverContainer o=(serverContainer)i.next();
+			  serverContainer o=(serverContainer)i.next(); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! bug
 			  request_message.id+=100000 ;
 		      answer_message=request_message ;
 			  answer_message.valid = true;			// only to show the client that this is the answer.
