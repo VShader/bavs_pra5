@@ -405,31 +405,38 @@ class time_server extends Thread
   { System.out.println("VS_server.run executed");
     out.listln("Server Start..");
 
-    /* main server loop */
-    while(running) {
- //      out.list("wait: ");
-      server_comm.receive(0) ; // wait for a request
-//       out.list("GOT:");
-      request_message.buffer.contents=server_comm.inDatagram.getData() ;
-      request_message.unpackFromBuffer() ;
-//       out.listln("REQUEST:\n"+request_message);
-
-       /* prepare answer message already */
-      request_message.id+=100000 ;
-      answer_message=request_message ;
-      answer_address=server_comm.inDatagram.getAddress() ;
-      answer_port=server_comm.inDatagram.getPort() ;
-
-       /* send time */
-      answer_message.serverName = serverName;
-      answer_message.time = System.currentTimeMillis();
-      answer_message.packToBuffer();
-      server_comm.OutBuffer=answer_message.buffer.contents ;
-      server_comm.message_id=answer_message.id;
-      server_comm.send(answer_port,answer_address);
-      out.listln("SEND ("+answer_message.serverName +"," +answer_message.time/1000 +"s)");
+    while(true)	{
+//    if(running) Report to the RegestryServer	
+    	/* main server loop */
+    	while(running) {
+    		send();
+    	}
     }
   }
+    
+    public void send()	{
+//      out.list("wait: ");
+        server_comm.receive(0) ; // wait for a request
+//         out.list("GOT:");
+        request_message.buffer.contents=server_comm.inDatagram.getData() ;
+        request_message.unpackFromBuffer() ;
+//         out.listln("REQUEST:\n"+request_message);
+
+         /* prepare answer message already */
+        request_message.id+=100000 ;
+        answer_message=request_message ;
+        answer_address=server_comm.inDatagram.getAddress() ;
+        answer_port=server_comm.inDatagram.getPort() ;
+
+         /* send time */
+        answer_message.serverName = serverName;
+        answer_message.time = System.currentTimeMillis();
+        answer_message.packToBuffer();
+        server_comm.OutBuffer=answer_message.buffer.contents ;
+        server_comm.message_id=answer_message.id;
+        server_comm.send(answer_port,answer_address);
+        out.listln("SEND ("+answer_message.serverName +"," +answer_message.time/1000 +"s)");
+    }
 }
 
 /* ----------------------------------------------------------------*/
@@ -497,7 +504,7 @@ class Regestry_server extends Thread
 
 /* ----------------------------------------------------------------*/
 
-class SmsClient { 
+class TimeClient { 
   int local_time ;
   InetAddress serverAddress ;
   int server_port ;
@@ -507,13 +514,13 @@ class SmsClient {
   VsComm client_socket ;
   OutputFrame out ;
 
-  SmsClient(
+  TimeClient(
+		  	 String clientName,
+		  	 NetworkSimulator network,
              InetAddress adr ,
              int serverport ,
-             int myport,
-             NetworkSimulator network,
-             OutputFrame out__ )  {
-    out=out__ ;
+             int myport )  {
+    out=new OutputFrame(clientName) ;
     serverAddress=adr ;
     server_port=serverport ;
     my_port=myport ;
@@ -522,55 +529,12 @@ class SmsClient {
     local_time=0 ;
     }
 
-  public void delete_sms_request(int this_number) {
-    TX_message.number=this_number ; TX_message.sms="" ;
-    TX_message.command=Constants.request_delete ;
-    do_request() ;
+  
+  public void time_request() {
+    TX_message.time=0 ;  TX_message.serverName="" ;
+    reliable_request() ; 
     }
 
-  public void find_sms_request(int this_number) {
-    TX_message.number=this_number ; TX_message.sms="" ;
-    TX_message.command=Constants.request_find ;
-    do_request() ;
-    }
-
-  public void first_sms_request() {
-    TX_message.number=0 ; TX_message.sms="" ;
-    TX_message.command=Constants.request_first ;
-    do_request() ;
-    }
-
-  public void enter_sms_request(int this_number , String this_sms) {
-    TX_message.number=this_number ;  TX_message.sms=this_sms ;
-    TX_message.command=Constants.request_store ;
-    do_request() ; 
-    }
-
-  public void list_request() {
-    TX_message.number=0 ; TX_message.sms="" ;
-    TX_message.command=Constants.request_list ;
-    do_request() ;
-    }
-
-  public void do_request() { 
-    //standard_request() ;
-	  reliable_request();
-    // spater ersetzen durch:
-    // reliable_request() ; 
-    }
-
-  public void standard_request() {
-    local_time++ ;
-    TX_message.id=local_time ;
-    TX_message.packToBuffer();
-    client_socket.OutBuffer=TX_message.buffer.contents ;
-    client_socket.message_id=TX_message.id ;
-    client_socket.send(server_port,serverAddress) ;
-    client_socket.receive(5000) ;
-    RX_message.buffer.contents=client_socket.inDatagram.getData() ;
-    RX_message.unpackFromBuffer() ;
-    System.out.println("TX id="+TX_message.id+" RX_id="+RX_message.id) ;
-    }
   
   public void reliable_request() {
 	boolean retry = true;
@@ -595,134 +559,86 @@ class SmsClient {
   }
 
 
-
 /* ----------------------------------------------------------------*/
 /* ----------------------------------------------------------------*/
 
-class ClientWindow extends Frame {
+class RegistryWindow extends Frame {
 
-  TextArea the_text=new TextArea() ;
-  Font listFont=new Font("Monospaced",Font.PLAIN,12) ;
-  String last_line ;
-  SmsClient client ;
-  TextField nameField=new TextField(20) ;
-  TextField matrField=new TextField(8) ;
+	  TextArea the_text=new TextArea() ;
+	  Font listFont=new Font("Monospaced",Font.PLAIN,12) ;
+	  String last_line ;
+	  TimeClient client ;
+	  TextField nameField=new TextField(20) ;
+	  TextField matrField=new TextField(8) ;
 
-/* my own list window outout functions */
+	/* my own list window outout functions */
 
-  void checkit() { 
-    if ( the_text.getCaretPosition()>25000 )
-      { the_text.replaceRange("-- TEXT DELETED --\n",0,5000); }
-    }
+	  void checkit() { 
+	    if ( the_text.getCaretPosition()>25000 )
+	      { the_text.replaceRange("-- TEXT DELETED --\n",0,5000); }
+	    }
 
-  void listln(String s) {
-    checkit() ; the_text.append(s); the_text.append("\n") ; last_line="" ;}
+	  void listln(String s) {
+	    checkit() ; the_text.append(s); the_text.append("\n") ; last_line="" ;}
 
-  void list(String s) {
-       checkit() ; the_text.append(s);
-       last_line=last_line+s ;
-       if ( last_line.length()>128)
-          { the_text.append("\\LF\n") ; last_line="" ; }
-      }
+	  void list(String s) {
+	       checkit() ; the_text.append(s);
+	       last_line=last_line+s ;
+	       if ( last_line.length()>128)
+	          { the_text.append("\\LF\n") ; last_line="" ; }
+	      }
 
-/* real stuff starts here ....                                   */
+	/* real stuff starts here ....                                   */
+
+RegistryWindow(  String title ,
+        NetworkSimulator network ,
+        InetAddress server_address ,
+        int server_port ,
+        int my_own_port ) {
+super(title) ;
+
+/* GUI related things ... */
+setSize(500,170) ;
+Panel pan_a=new Panel() ;
+Button enter_but=new Button("ENTER") ;
+pan_a.add(enter_but)  ;
+
+/* connect buttons with actions */
+enter_but.addActionListener(new enter_listener());
+
+/* global layout */
+Label ln=new Label("SMS:") ;
+Label lm=new Label("NUMBER:") ;
+Panel pan_b=new Panel() ;
+pan_b.add(lm) ;  pan_b.add(matrField) ;
+pan_b.add(ln) ;  pan_b.add(nameField) ;
+setLayout(new BorderLayout()) ;
+add("Center",the_text) ;
+add("South",pan_a) ;
+add("North",pan_b) ;
+// deprecation    show();
+setVisible(true) ;
+/* supply a listing window to the client_object */
+OutputFrame out=new OutputFrame("history of "+title) ;
+
+/* and install client */
+//client=new TimeClient(server_address,server_port,my_own_port,network,out) ;
+}
+
+class enter_listener implements ActionListener
+{ public void actionPerformed(ActionEvent e)
+{ listln("ENTER") ;
+  String name=nameField.getText() ;
+  listln("SMS="+name) ;
+  String s=matrField.getText() ;
+  int matrikel =Integer.valueOf(s).intValue() ;
+  client.time_request();
+}
+}
 
 
-ClientWindow(  String title ,
-               NetworkSimulator network ,
-               InetAddress server_address ,
-               int server_port ,
-               int my_own_port ) {
-  super(title) ;
+}   // end class registry_window
 
-  /* GUI related things ... */
-  setSize(500,170) ;
-  Panel pan_a=new Panel() ;
-  Button enter_but=new Button("ENTER") ;
-  Button delete_but=new Button("DELETE") ;
-  Button find_but=new Button("FIND") ;
-  Button first_but=new Button("FIRST") ;
-  Button list_but=new Button("LIST") ;
-  pan_a.add(enter_but)  ;
-  pan_a.add(delete_but)  ;
-  pan_a.add(find_but)  ;
-  pan_a.add(first_but)  ;
-  pan_a.add(list_but)  ;
-
-  /* connect buttons with actions */
-  enter_but.addActionListener(new enter_listener());
-  delete_but.addActionListener(new delete_listener());
-  find_but.addActionListener(new find_listener());
-  first_but.addActionListener(new first_listener());
-  list_but.addActionListener(new list_listener());
-
-  /* global layout */
-  Label ln=new Label("SMS:") ;
-  Label lm=new Label("NUMBER:") ;
-  Panel pan_b=new Panel() ;
-  pan_b.add(lm) ;  pan_b.add(matrField) ;
-  pan_b.add(ln) ;  pan_b.add(nameField) ;
-  setLayout(new BorderLayout()) ;
-  add("Center",the_text) ;
-  add("South",pan_a) ;
-  add("North",pan_b) ;
-  // deprecation    show();
-    setVisible(true) ;
-  /* supply a listing window to the client_object */
-  OutputFrame out=new OutputFrame("history of "+title) ;
-
-  /* and install client */
-  client=new SmsClient(server_address,server_port,my_own_port,network,out) ;
-  }
-
-  class enter_listener implements ActionListener
-    { public void actionPerformed(ActionEvent e)
-       { listln("ENTER") ;
-         String name=nameField.getText() ;
-         listln("SMS="+name) ;
-         String s=matrField.getText() ;
-         int matrikel =Integer.valueOf(s).intValue() ;
-         client.enter_sms_request(matrikel,name);
-       }
-    }
-
-  class delete_listener implements ActionListener
-    { public void actionPerformed(ActionEvent e)
-      {  listln("DELETE") ;
-         String s=matrField.getText() ;
-         int number =Integer.valueOf(s).intValue() ;
-         client.delete_sms_request(number);
-      }
-    }
-
-  class find_listener implements ActionListener
-    { public void actionPerformed(ActionEvent e)
-     {  listln("FIND") ;
-         String s=matrField.getText() ;
-         int matrikel =Integer.valueOf(s).intValue() ;
-         client.find_sms_request(matrikel);
-         nameField.setText(client.RX_message.sms);
-      }
-    }
-
-   class first_listener implements ActionListener
-    { public void actionPerformed(ActionEvent e)
-     {  listln("FIRST") ;
-         client.first_sms_request() ;
-         matrField.setText(""+client.RX_message.number);
-         if (client.RX_message.command==Constants.answer_notfound)
-           { nameField.setText("-EMPTY-") ; }
-          else
-           { nameField.setText(client.RX_message.sms); }
-      }
-    }
-
-  class list_listener implements ActionListener
-    { public void actionPerformed(ActionEvent e)
-        { client.list_request(); }
-    }
-
-    }   // end class client_window
 
 
 /* ----------------------------------------------------------------*/
@@ -756,11 +672,11 @@ void start()
 
    try{ server_a_address = InetAddress.getByName("127.0.0.1");   }
    catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
-   ClientWindow window_a=new ClientWindow("CLIENT-A",global_network,server_a_address,server_a_port,4555) ;
+   TimeClient client_a=new TimeClient("Client A", global_network, server_a_address,server_a_port,4555) ;
 
    try{ server_b_address = InetAddress.getByName("127.0.0.1");   }
    catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
-   ClientWindow window_b=new ClientWindow("CLIENT-B",global_network,server_b_address,server_b_port,4556) ;
+   TimeClient client_b=new TimeClient("Client B", global_network, server_b_address,server_b_port,4556) ;
   
 
   }
