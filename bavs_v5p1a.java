@@ -639,6 +639,7 @@ class TimeClient {
   InetAddress timeServerAddress ;
   int regestryServer_port ;
   int timeServer_port ;
+  String timeServerName;
   int my_port ;
   ReportMessage TX_Report_message=new ReportMessage() ;
   ReportMessage RX_Report_message=new ReportMessage() ;
@@ -660,7 +661,11 @@ class TimeClient {
     System.out.println("VS_client setup, server="+adr);
     client_socket=new VsComm(my_port,network) ;
     local_time=0 ;
+    try{ timeServerAddress=InetAddress.getByName("0.0.0.0"); }
+    catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
+    timeServerName="";
     server_request();
+    time_request();
     }
   
   public void server_request()	{
@@ -668,6 +673,10 @@ class TimeClient {
 		do {
 			local_time++ ;
 			TX_Report_message.id=local_time ;
+			TX_Report_message.serverName=timeServerName;
+			TX_Report_message.ip=timeServerAddress.toString();
+			TX_Report_message.port=timeServer_port;
+			TX_Report_message.valid=false;
 			TX_Report_message.packToBuffer();
 			client_socket.OutBuffer=TX_Report_message.buffer.contents ;
 			client_socket.message_id=TX_Report_message.id ;
@@ -689,13 +698,19 @@ class TimeClient {
 
   
   public void time_request() {
-    TX_Time_message.time=0 ;  TX_Time_message.serverName="" ;
-    reliable_request() ; 
+	  Timer timer=new Timer();
+	  while (true) {
+		  TX_Time_message.time=0 ;  TX_Time_message.serverName="" ;
+		  reliable_request() ;
+		  try{ timer.wait(1000); }
+		  catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
+	  }
     }
 
   
   public void reliable_request() {
 	boolean retry = true;
+	int timeout = 3;
 	do {
 		local_time++ ;
 		TX_Time_message.id=local_time ;
@@ -708,6 +723,8 @@ class TimeClient {
 		RX_Time_message.unpackFromBuffer() ;
 		if(TX_Time_message.id == RX_Time_message.id-100000) retry = false;
 		else System.out.println("ERROR: SendID doesn't match RequestID");
+		timeout--;
+		if(timeout == 0) server_request();
 	}
 	while(retry);
 	System.out.println("TX id="+TX_Time_message.id+" RX_id="+RX_Time_message.id) ;		
