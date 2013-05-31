@@ -207,6 +207,15 @@ class ByteBuffer
       }
     return(s) ;
     }
+  
+  void putBoolean(boolean B) {
+	  putByte( (byte)(B?1:0) );
+  }
+  
+  boolean getBoolean()	{
+	  if(getUnsignedByte() == 0) return false;
+	  else return true;
+  }
 
 } /* end class byte_buffer */
 
@@ -378,6 +387,7 @@ int id ;				// message id given from request
 String serverName ;
 String ip;				// server ip
 int port ;   			// server port
+boolean valid;
 
 ByteBuffer buffer=new ByteBuffer() ;
 
@@ -385,7 +395,7 @@ ByteBuffer buffer=new ByteBuffer() ;
   { return("#"+serverName+" IP:"+" Port:"+port+" id="+id) ; }
 
   ReportMessage()
-  { id=456; serverName="empty"; ip="127.0.0.1"; port=0; }
+  { id=456; serverName="empty"; ip="127.0.0.1"; port=0; valid=true;}
 
   void packToBuffer()
   {
@@ -394,6 +404,7 @@ ByteBuffer buffer=new ByteBuffer() ;
   buffer.putString(serverName);
   buffer.putString(ip);
   buffer.putInt(port);
+  buffer.putBoolean(valid);
   }
 
   void unpackFromBuffer()
@@ -403,6 +414,7 @@ ByteBuffer buffer=new ByteBuffer() ;
   serverName=buffer.getString();
   ip=buffer.getString();
   port=buffer.getInt();
+  valid=buffer.getBoolean();
   }
 }
 /* ----------------------------------------------------------------*/
@@ -623,11 +635,15 @@ class Regestry_server extends Thread
 
 class TimeClient { 
   int local_time ;
-  InetAddress serverAddress ;
-  int server_port ;
+  InetAddress regestryServerAddress ;
+  InetAddress timeServerAddress ;
+  int regestryServer_port ;
+  int timeServer_port ;
   int my_port ;
-  TimeMessage TX_message=new TimeMessage() ;
-  TimeMessage RX_message=new TimeMessage() ;
+  ReportMessage TX_Report_message=new ReportMessage() ;
+  ReportMessage RX_Report_message=new ReportMessage() ;
+  TimeMessage TX_Time_message=new TimeMessage() ;
+  TimeMessage RX_Time_message=new TimeMessage() ;
   VsComm client_socket ;
   OutputFrame out ;
 
@@ -638,17 +654,42 @@ class TimeClient {
              int serverport ,
              int myport )  {
     out=new OutputFrame(clientName) ;
-    serverAddress=adr ;
-    server_port=serverport ;
+    regestryServerAddress=adr ;
+    regestryServer_port=serverport ;
     my_port=myport ;
     System.out.println("VS_client setup, server="+adr);
     client_socket=new VsComm(my_port,network) ;
     local_time=0 ;
+    server_request();
     }
+  
+  public void server_request()	{
+	  boolean retry = true;
+		do {
+			local_time++ ;
+			TX_Report_message.id=local_time ;
+			TX_Report_message.packToBuffer();
+			client_socket.OutBuffer=TX_Report_message.buffer.contents ;
+			client_socket.message_id=TX_Report_message.id ;
+			client_socket.send(regestryServer_port, regestryServerAddress) ;
+			client_socket.receive(5000) ;
+			RX_Report_message.buffer.contents=client_socket.inDatagram.getData() ;
+			RX_Report_message.unpackFromBuffer() ;
+			if(TX_Report_message.id == RX_Report_message.id-100000) retry = false;
+			else System.out.println("ERROR: SendID doesn't match RequestID");
+		}
+		while(retry);
+		
+		try {timeServerAddress=InetAddress.getByName(RX_Report_message.ip);}
+		catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
+		
+		timeServer_port=RX_Report_message.port;
+		System.out.println("New Timeserver, IP:"+timeServerAddress.toString()+" Port:"+timeServer_port) ;
+  }
 
   
   public void time_request() {
-    TX_message.time=0 ;  TX_message.serverName="" ;
+    TX_Time_message.time=0 ;  TX_Time_message.serverName="" ;
     reliable_request() ; 
     }
 
@@ -657,19 +698,19 @@ class TimeClient {
 	boolean retry = true;
 	do {
 		local_time++ ;
-		TX_message.id=local_time ;
-		TX_message.packToBuffer();
-		client_socket.OutBuffer=TX_message.buffer.contents ;
-		client_socket.message_id=TX_message.id ;
-		client_socket.send(server_port,serverAddress) ;
+		TX_Time_message.id=local_time ;
+		TX_Time_message.packToBuffer();
+		client_socket.OutBuffer=TX_Time_message.buffer.contents ;
+		client_socket.message_id=TX_Time_message.id ;
+		client_socket.send(timeServer_port, timeServerAddress) ;
 		client_socket.receive(5000) ;
-		RX_message.buffer.contents=client_socket.inDatagram.getData() ;
-		RX_message.unpackFromBuffer() ;
-		if(TX_message.id == RX_message.id-100000) retry = false;
+		RX_Time_message.buffer.contents=client_socket.inDatagram.getData() ;
+		RX_Time_message.unpackFromBuffer() ;
+		if(TX_Time_message.id == RX_Time_message.id-100000) retry = false;
 		else System.out.println("ERROR: SendID doesn't match RequestID");
 	}
 	while(retry);
-	System.out.println("TX id="+TX_message.id+" RX_id="+RX_message.id) ;		
+	System.out.println("TX id="+TX_Time_message.id+" RX_id="+RX_Time_message.id) ;		
   }
 
  

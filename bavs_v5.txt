@@ -197,7 +197,10 @@ nicht verfuegbar ist. Was ist dann zu tun ? Gibt es mehrere Konzepte,
 die Nicht-Verfuegbarkeit festzustellen ? Welches realisieren Sie
 und warum ?
 
-Antwort::
+Antwort::Scheitert eine Zeitanfrage 3 mal so wird um einen neuen Server gebeten.
+		 Dazu wird in der Anfragenachricht an den Regestry Server der aktuelle Server übergeben.
+		 Der Regestry Server löscht diesen aus seiner Liste und übergibt dem Client den nächsten mit einer geringen Auslastung.
+		 Sollte ein Time Server keine Anfragen mehr bekommen gibt er sich erneut dem Regestry Server bekannt.
 
  
 Praktikums-Aufgabe 5 : 
