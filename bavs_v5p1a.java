@@ -421,12 +421,17 @@ ByteBuffer buffer=new ByteBuffer() ;
 
 class time_server extends Thread
 { NetworkSimulator network ;
-  TreeMap sms_map=new TreeMap() ;
   VsComm server_comm ;
-  TimeMessage request_message=new TimeMessage() ;
-  TimeMessage answer_message=new TimeMessage() ;
+  TimeMessage time_request_message=new TimeMessage() ;
+  TimeMessage time_answer_message=new TimeMessage() ;
+  ReportMessage report_request_message=new ReportMessage() ;
+  ReportMessage report_answer_message=new ReportMessage() ;
   OutputFrame out ;
   String serverName;
+  InetAddress ip;
+  int port;
+  InetAddress regestryIp;
+  int regestryPort;
   boolean running;
 
   InetAddress answer_address ;
@@ -435,14 +440,15 @@ class time_server extends Thread
   String String_to_length(String s , int l)
     { while(s.length()<l) s=s+" " ; return(s) ; }
 
-   time_server(NetworkSimulator n , int  server_port, String serverName )
+   time_server(String serverName, NetworkSimulator n, InetAddress regestry_server_address, int regestry_server_port, 
+		   		InetAddress server_address, int  server_port)
      {
 	 running = true;
      network=n ;
      this.serverName=serverName;
-     sms_map.put(new Integer(123),"SMS123") ;
-     sms_map.put(new Integer(server_port),"is my port") ;
-     sms_map.put(new Integer(4711),"SMS von 4711") ;
+     port=server_port;
+     regestryIp = regestry_server_address;
+     regestryPort = regestry_server_port;
      out=new OutputFrame(serverName+" at port "+server_port) ;
      server_comm=new VsComm(server_port, network) ;
      out.listln("Server Socket Start..");
@@ -456,33 +462,55 @@ class time_server extends Thread
 //    if(running) Report to the RegestryServer	
     	/* main server loop */
     	while(running) {
-    		send();
+    		sendTime();
     	}
     }
   }
     
-    public void send()	{
+    public void sendTime()	{
 //      out.list("wait: ");
-        server_comm.receive(0) ; // wait for a request
+        server_comm.receive(5000) ; // wait for a request, after 5s send request to registryserver
 //         out.list("GOT:");
-        request_message.buffer.contents=server_comm.inDatagram.getData() ;
-        request_message.unpackFromBuffer() ;
+        time_request_message.buffer.contents=server_comm.inDatagram.getData() ;
+        time_request_message.unpackFromBuffer() ;
 //         out.listln("REQUEST:\n"+request_message);
 
          /* prepare answer message already */
-        request_message.id+=100000 ;
-        answer_message=request_message ;
+        time_request_message.id+=100000 ;
+        time_answer_message=time_request_message ;
         answer_address=server_comm.inDatagram.getAddress() ;
         answer_port=server_comm.inDatagram.getPort() ;
 
          /* send time */
-        answer_message.serverName = serverName;
-        answer_message.time = System.currentTimeMillis();
-        answer_message.packToBuffer();
-        server_comm.OutBuffer=answer_message.buffer.contents ;
-        server_comm.message_id=answer_message.id;
+        time_answer_message.serverName = serverName;
+        time_answer_message.time = System.currentTimeMillis();
+        time_answer_message.packToBuffer();
+        server_comm.OutBuffer=time_answer_message.buffer.contents ;
+        server_comm.message_id=time_answer_message.id;
         server_comm.send(answer_port,answer_address);
-        out.listln("SEND ("+answer_message.serverName +"," +answer_message.time/1000 +"s)");
+        out.listln("SEND ("+time_answer_message.serverName +"," +time_answer_message.time/1000 +"s)");
+    }
+    
+    void sendIp()	{
+    	boolean retry=true;
+    	do	{
+    		report_request_message.serverName = serverName;
+    		report_request_message.ip = ip.toString();
+    		report_request_message.port = port;
+    		report_request_message.packToBuffer();
+    		server_comm.OutBuffer=report_request_message.buffer.contents ;
+    		server_comm.message_id=500;
+    		server_comm.send(regestryPort,regestryIp);
+    		out.listln("SEND ("+time_answer_message.serverName +"," +time_answer_message.time/1000 +"s)");
+        
+    		server_comm.receive(5000) ;
+    		report_answer_message.buffer.contents=server_comm.inDatagram.getData() ;
+    		report_answer_message.unpackFromBuffer() ;
+    		if(!report_answer_message.valid) retry = false;
+    		else	{
+    			System.out.println("ERROR: Cann't add serveraddress to regestry");
+    		}
+    	}while(retry);
     }
 }
 
@@ -587,7 +615,7 @@ class Regestry_server extends Thread
   String String_to_length(String s , int l)
     { while(s.length()<l) s=s+" " ; return(s) ; }
 
-   Regestry_server(NetworkSimulator n , int  server_port, String serverName )
+   Regestry_server(String serverName, NetworkSimulator n, InetAddress server_address, int  server_port)
      {
 	 running = true;
      network=n ;
@@ -729,7 +757,10 @@ class TimeClient {
 			RX_Report_message.buffer.contents=client_socket.inDatagram.getData() ;
 			RX_Report_message.unpackFromBuffer() ;
 			if(TX_Report_message.id == RX_Report_message.id-100000) retry = false;
-			else System.out.println("ERROR: SendID doesn't match RequestID");
+			else	{
+				System.out.println("ERROR: SendID doesn't match RequestID");
+				System.out.println("Request faild or no server is available");
+			}
 		}
 		while(retry);
 		
@@ -784,7 +815,7 @@ class TimeClient {
 
 
 class ClientServerTest {
-  InetAddress regetry_server_address;
+  InetAddress regestry_server_address;
   InetAddress server_a_address ;
   InetAddress server_b_address ;
   NetworkSimulator global_network ;
@@ -801,20 +832,26 @@ void start()
 
    global_network.start();
 
-//   server_a_port=2345 ;
-//   time_server server_a=new time_server(global_network,server_a_port, "Server A") ;
-//   server_a.start() ;
-//
+   
+   try{ regestry_server_address = InetAddress.getByName("127.0.0.1");   }
+   catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
+   try{ server_a_address = InetAddress.getByName("127.0.0.1");   }
+   catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
+   
+   regestry_server_port=1337;
+   Regestry_server regServer=new Regestry_server("Regestry Server", global_network,  regestry_server_address, regestry_server_port);
+   regServer.start();
+   
+   server_a_port=2345 ;
+   time_server server_a=new time_server("Server A", global_network, regestry_server_address, 
+		   								regestry_server_port, server_a_address, server_a_port) ;
+   server_a.start() ;
+
 //   server_b_port=2346 ;
 //   time_server server_b=new time_server(global_network,server_b_port, "Server B") ;
 //   server_b.start() ;
 
-   regestry_server_port=1337;
-   Regestry_server regServer=new Regestry_server(global_network, regestry_server_port, "Regerstry Server");
-   regServer.start();
    
-   try{ server_a_address = InetAddress.getByName("127.0.0.1");   }
-   catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
    TimeClient client_a=new TimeClient("Client A", global_network, server_a_address,regestry_server_port,4555) ;
 
    try{ server_b_address = InetAddress.getByName("127.0.0.1");   }
