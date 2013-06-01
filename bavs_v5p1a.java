@@ -434,6 +434,7 @@ class time_server extends Thread
   InetAddress regestryIp;
   int regestryPort;
   boolean running;
+  int lastID;
 
   InetAddress answer_address ;
   int answer_port ;
@@ -476,13 +477,22 @@ class time_server extends Thread
 //         out.list("GOT:");
         time_request_message.buffer.contents=server_comm.inDatagram.getData() ;
         time_request_message.unpackFromBuffer() ;
+        if(time_request_message.id == lastID)
+        {
+        	out.listln("#################################################");
+        	out.listln("# ERROR: No request, try to connect to regestry #");
+        	out.listln("#################################################");
+        }
 //         out.listln("REQUEST:\n"+request_message);
+        lastID = time_request_message.id;
 
          /* prepare answer message already */
         time_request_message.id+=100000 ;
         time_answer_message=time_request_message ;
         answer_address=server_comm.inDatagram.getAddress() ;
         answer_port=server_comm.inDatagram.getPort() ;
+        
+        out.listln("Message from: "+server_comm.inDatagram.getAddress().toString().substring(1)+" "+server_comm.inDatagram.getPort());
 
          /* send time */
         time_answer_message.serverName = serverName;
@@ -490,8 +500,13 @@ class time_server extends Thread
         time_answer_message.packToBuffer();
         server_comm.OutBuffer=time_answer_message.buffer.contents ;
         server_comm.message_id=time_answer_message.id;
+        
+        out.listln("SEND ("+time_answer_message.serverName +"," +time_answer_message.time/1000 +"s)");
+        out.listln("to "+answer_address.toString().substring(1)+" "+answer_port);
+        
         server_comm.send(answer_port,answer_address);
         out.listln("SEND ("+time_answer_message.serverName +"," +time_answer_message.time/1000 +"s)");
+        out.listln("to "+answer_address.toString().substring(1)+" "+answer_port);
     }
     
     void sendIp()	{
@@ -726,7 +741,7 @@ class Regestry_server extends Thread
 
 /* ----------------------------------------------------------------*/
 
-class TimeClient { 
+class TimeClient extends Thread{ 
   int local_time ;
   InetAddress regestryServerAddress ;
   InetAddress timeServerAddress ;
@@ -758,9 +773,13 @@ class TimeClient {
     try{ timeServerAddress=InetAddress.getByName("0.0.0.0"); }
     catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
     timeServerName="";
-    server_request();
-    time_request();
     }
+  
+  public void run()
+  {
+	  server_request();
+	  time_request();
+  }
   
   public void server_request()	{
 	  boolean retry = true;
@@ -880,10 +899,11 @@ void start()
    server_b_port=2346 ;
    time_server server_b=new time_server("Server B", global_network, regestry_server_address, 
 				regestry_server_port, server_b_address, server_b_port) ;
-   server_b.start() ;
+//   server_b.start() ;
 
    
    TimeClient client_a=new TimeClient("Client A", global_network, regestry_server_address,regestry_server_port,4555) ;
+   client_a.start();
 
 //   TimeClient client_b=new TimeClient("Client B", global_network, server_b_address,regestry_server_port,4556) ;
   
