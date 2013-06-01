@@ -718,6 +718,7 @@ class TimeClient {
   int timeServer_port ;
   String timeServerName;
   int my_port ;
+  long RTime;
   ReportMessage TX_Report_message=new ReportMessage() ;
   ReportMessage RX_Report_message=new ReportMessage() ;
   TimeMessage TX_Time_message=new TimeMessage() ;
@@ -773,7 +774,7 @@ class TimeClient {
 		catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
 		
 		timeServer_port=RX_Report_message.port;
-		System.out.println("New Timeserver, IP:"+timeServerAddress.toString()+" Port:"+timeServer_port) ;
+		out.listln("New Timeserver "+RX_Report_message.serverName+"\nIP:"+timeServerAddress.toString().substring(1)+" Port:"+timeServer_port) ;
   }
 
   
@@ -782,6 +783,7 @@ class TimeClient {
 	  while (true) {
 		  TX_Time_message.time=0 ;  TX_Time_message.serverName="" ;
 		  reliable_request() ;
+		  out.listln("Time from "+RX_Time_message.serverName+"is "+RTime/1000+"s");
 		  try{ timer.wait(1000); }
 		  catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
 	  }
@@ -804,10 +806,14 @@ class TimeClient {
 		if(TX_Time_message.id == RX_Time_message.id-100000) retry = false;
 		else System.out.println("ERROR: SendID doesn't match RequestID");
 		timeout--;
-		if(timeout == 0) server_request();
+		if(timeout == 0)	{
+			out.listln("No answer from "+RX_Time_message.serverName+"!!!\nTry to get another.");
+			server_request();
+		}
 	}
 	while(retry);
-	System.out.println("TX id="+TX_Time_message.id+" RX_id="+RX_Time_message.id) ;		
+	System.out.println("TX id="+TX_Time_message.id+" RX_id="+RX_Time_message.id) ;
+	RTime = RX_Time_message.time;
   }
 
  
@@ -842,6 +848,8 @@ void start()
    catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
    try{ server_a_address = InetAddress.getByName("127.0.0.1");   }
    catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
+   try{ server_b_address = InetAddress.getByName("127.0.0.1");   }
+   catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
    
    regestry_server_port=1337;
    Regestry_server regServer=new Regestry_server("Regestry Server", global_network,  regestry_server_address, regestry_server_port);
@@ -852,9 +860,10 @@ void start()
 		   								regestry_server_port, server_a_address, server_a_port) ;
    server_a.start() ;
 
-//   server_b_port=2346 ;
-//   time_server server_b=new time_server(global_network,server_b_port, "Server B") ;
-//   server_b.start() ;
+   server_b_port=2346 ;
+   time_server server_b=new time_server("Server B", global_network, regestry_server_address, 
+				regestry_server_port, server_b_address, server_b_port) ;
+   server_b.start() ;
 
    
    TimeClient client_a=new TimeClient("Client A", global_network, server_a_address,regestry_server_port,4555) ;
