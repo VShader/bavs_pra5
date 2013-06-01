@@ -513,7 +513,6 @@ class time_server extends Thread
     
     void sendIp()	{
     	boolean retry=true;
-//    	do	{
     		report_request_message.serverName = serverName;
     		report_request_message.ip = ip.toString().substring(1);
     		report_request_message.port = port;
@@ -522,15 +521,6 @@ class time_server extends Thread
     		server_comm.message_id=500;
     		server_comm.send(regestryPort,regestryIp);
     		out.listln("SEND ("+time_answer_message.serverName +"," +time_answer_message.time/1000 +"s)");
-        
-//    		server_comm.receive(5000) ;
-//    		report_answer_message.buffer.contents=server_comm.inDatagram.getData() ;
-//    		report_answer_message.unpackFromBuffer() ;
-//    		if(!report_answer_message.valid) retry = false;
-//    		else	{
-//    			System.out.println("ERROR: Cann't add serveraddress to regestry");
-//    		}
-//    	}while(retry);
     }
 }
 
@@ -644,8 +634,6 @@ class Regestry_server extends Thread
      out=new OutputFrame(serverName+" at port "+server_port) ;
      server_comm=new VsComm(server_port, network) ;
      out.listln("Server Socket Start..");
-//     server_map.put(new String(request_message.serverName), new serverContainer("Blank",
-//				"0.0.0.0", 000));
      }
 
   public void run()
@@ -670,18 +658,6 @@ class Regestry_server extends Thread
   void addServer()	{
 	  server_map.put(new String(request_message.serverName), new serverContainer(request_message.serverName,
 			  																	request_message.ip, request_message.port));
-//	  request_message.id+=100000 ;
-//      answer_message=request_message ;
-//      answer_message.serverName="Done";
-//	  answer_message.valid = false;			// only to show the time server that it was added;
-//      answer_address=server_comm.inDatagram.getAddress() ;
-//      answer_port=server_comm.inDatagram.getPort() ;
-//
-//      answer_message.serverName = serverName;
-//      answer_message.packToBuffer();
-//      server_comm.OutBuffer=answer_message.buffer.contents ;
-//      server_comm.message_id=answer_message.id;
-//      server_comm.send(answer_port,answer_address);
       out.listln("SEND ("+answer_message.serverName +"," +"s)");
 
   }
@@ -821,7 +797,7 @@ class TimeClient extends Thread{
 	  while (true) {
 		  TX_Time_message.time=0 ;  TX_Time_message.serverName="" ;
 		  reliable_request() ;
-		  out.listln("Time from "+RX_Time_message.serverName+"is "+RTime/1000+"s");
+		  out.listln("Time from "+RX_Time_message.serverName+" is "+RTime/1000+"s");
 			  try{ this.sleep(1000); }
 			  catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
 	  }
@@ -902,15 +878,14 @@ void start()
    server_b_port=2346 ;
    time_server server_b=new time_server("Server B", global_network, regestry_server_address, 
 				regestry_server_port, server_b_address, server_b_port) ;
-//   server_b.start() ;
+   server_b.start() ;
 
    
    TimeClient client_a=new TimeClient("Client A", global_network, regestry_server_address,regestry_server_port,4555) ;
    client_a.start();
-
-//   TimeClient client_b=new TimeClient("Client B", global_network, server_b_address,regestry_server_port,4556) ;
-  
-
+   
+   TimeClient client_b=new TimeClient("Client B", global_network, regestry_server_address,regestry_server_port,4556) ;
+   client_b.start();
   }
 } // end class client_server_test
 
