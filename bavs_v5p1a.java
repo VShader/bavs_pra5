@@ -498,7 +498,7 @@ class time_server extends Thread
     	boolean retry=true;
     	do	{
     		report_request_message.serverName = serverName;
-    		report_request_message.ip = ip.toString();
+    		report_request_message.ip = ip.toString().substring(1);
     		report_request_message.port = port;
     		report_request_message.packToBuffer();
     		server_comm.OutBuffer=report_request_message.buffer.contents ;
