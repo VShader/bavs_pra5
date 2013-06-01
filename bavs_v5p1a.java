@@ -3,6 +3,7 @@ import java.awt.event.* ;
 import java.io.* ;  
 
 import java.util.* ;
+import java.util.Map.Entry;
 
 import java.net.DatagramSocket;
 import java.net.DatagramPacket;
@@ -626,6 +627,8 @@ class Regestry_server extends Thread
      out=new OutputFrame(serverName+" at port "+server_port) ;
      server_comm=new VsComm(server_port, network) ;
      out.listln("Server Socket Start..");
+     server_map.put(new String(request_message.serverName), new serverContainer("Blank",
+				"0.0.0.0", 000));
      }
 
   public void run()
@@ -667,21 +670,21 @@ class Regestry_server extends Thread
   void deleteServer()	{
 	  server_map.remove(new String(serverName));
 	  int counter=0;
-	  Collection c=server_map.keySet(); Iterator i=c.iterator();
-	  while(i.hasNext())
+	  Iterator<Map.Entry<String, serverContainer>> entries = server_map.entrySet().iterator();
+	  while(entries.hasNext())
 	  {
 		  if( counter == nextServer%server_map.size())
 		  {
-			  serverContainer o=(serverContainer)i.next(); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! bug
+			  Map.Entry<String, serverContainer> entry = entries.next();
 			  request_message.id+=100000 ;
 		      answer_message=request_message ;
 			  answer_message.valid = true;			// only to show the client that this is the answer.
 		      answer_address=server_comm.inDatagram.getAddress() ;
 		      answer_port=server_comm.inDatagram.getPort() ;
 
-		      answer_message.serverName = o.serverName;
-		      answer_message.ip = o.ip;
-		      answer_message.port = o.port;
+		      answer_message.serverName = entry.getValue().serverName;
+		      answer_message.ip = entry.getValue().ip;
+		      answer_message.port = entry.getValue().port;
 		      answer_message.packToBuffer();
 		      server_comm.OutBuffer=answer_message.buffer.contents ;
 		      server_comm.message_id=answer_message.id;
