@@ -886,6 +886,12 @@ void start()
    
    TimeClient client_b=new TimeClient("Client B", global_network, regestry_server_address,regestry_server_port,4556) ;
    client_b.start();
+   
+   TimeClient client_c=new TimeClient("Client C", global_network, regestry_server_address,regestry_server_port,4557) ;
+   client_c.start();
+   
+   TimeClient client_d=new TimeClient("Client D", global_network, regestry_server_address,regestry_server_port,4558) ;
+   client_d.start();
   }
 } // end class client_server_test
 
