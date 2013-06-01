@@ -477,11 +477,13 @@ class time_server extends Thread
 //         out.list("GOT:");
         time_request_message.buffer.contents=server_comm.inDatagram.getData() ;
         time_request_message.unpackFromBuffer() ;
-        if(time_request_message.id == lastID)
+        if(time_request_message.id == lastID+100000 || time_request_message.id == lastID)
         {
         	out.listln("#################################################");
         	out.listln("# ERROR: No request, try to connect to regestry #");
         	out.listln("#################################################");
+        	sendIp();
+        	return;
         }
 //         out.listln("REQUEST:\n"+request_message);
         lastID = time_request_message.id;
@@ -511,7 +513,7 @@ class time_server extends Thread
     
     void sendIp()	{
     	boolean retry=true;
-    	do	{
+//    	do	{
     		report_request_message.serverName = serverName;
     		report_request_message.ip = ip.toString().substring(1);
     		report_request_message.port = port;
@@ -521,14 +523,14 @@ class time_server extends Thread
     		server_comm.send(regestryPort,regestryIp);
     		out.listln("SEND ("+time_answer_message.serverName +"," +time_answer_message.time/1000 +"s)");
         
-    		server_comm.receive(5000) ;
-    		report_answer_message.buffer.contents=server_comm.inDatagram.getData() ;
-    		report_answer_message.unpackFromBuffer() ;
-    		if(!report_answer_message.valid) retry = false;
-    		else	{
-    			System.out.println("ERROR: Cann't add serveraddress to regestry");
-    		}
-    	}while(retry);
+//    		server_comm.receive(5000) ;
+//    		report_answer_message.buffer.contents=server_comm.inDatagram.getData() ;
+//    		report_answer_message.unpackFromBuffer() ;
+//    		if(!report_answer_message.valid) retry = false;
+//    		else	{
+//    			System.out.println("ERROR: Cann't add serveraddress to regestry");
+//    		}
+//    	}while(retry);
     }
 }
 
@@ -668,17 +670,18 @@ class Regestry_server extends Thread
   void addServer()	{
 	  server_map.put(new String(request_message.serverName), new serverContainer(request_message.serverName,
 			  																	request_message.ip, request_message.port));
-	  request_message.id+=100000 ;
-      answer_message=request_message ;
-	  answer_message.valid = false;			// only to show the time server that it was added;
-      answer_address=server_comm.inDatagram.getAddress() ;
-      answer_port=server_comm.inDatagram.getPort() ;
-
-      answer_message.serverName = serverName;
-      answer_message.packToBuffer();
-      server_comm.OutBuffer=answer_message.buffer.contents ;
-      server_comm.message_id=answer_message.id;
-      server_comm.send(answer_port,answer_address);
+//	  request_message.id+=100000 ;
+//      answer_message=request_message ;
+//      answer_message.serverName="Done";
+//	  answer_message.valid = false;			// only to show the time server that it was added;
+//      answer_address=server_comm.inDatagram.getAddress() ;
+//      answer_port=server_comm.inDatagram.getPort() ;
+//
+//      answer_message.serverName = serverName;
+//      answer_message.packToBuffer();
+//      server_comm.OutBuffer=answer_message.buffer.contents ;
+//      server_comm.message_id=answer_message.id;
+//      server_comm.send(answer_port,answer_address);
       out.listln("SEND ("+answer_message.serverName +"," +"s)");
 
   }
@@ -813,14 +816,14 @@ class TimeClient extends Thread{
   }
 
   
-  public void time_request() {
+ public void time_request() {
 	  Timer timer=new Timer();
 	  while (true) {
 		  TX_Time_message.time=0 ;  TX_Time_message.serverName="" ;
 		  reliable_request() ;
 		  out.listln("Time from "+RX_Time_message.serverName+"is "+RTime/1000+"s");
-		  try{ timer.wait(1000); }
-		  catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
+			  try{ this.sleep(1000); }
+			  catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
 	  }
     }
 
