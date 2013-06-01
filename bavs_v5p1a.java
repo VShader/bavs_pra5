@@ -627,8 +627,8 @@ class Regestry_server extends Thread
      out=new OutputFrame(serverName+" at port "+server_port) ;
      server_comm=new VsComm(server_port, network) ;
      out.listln("Server Socket Start..");
-     server_map.put(new String(request_message.serverName), new serverContainer("Blank",
-				"0.0.0.0", 000));
+//     server_map.put(new String(request_message.serverName), new serverContainer("Blank",
+//				"0.0.0.0", 000));
      }
 
   public void run()
@@ -637,6 +637,7 @@ class Regestry_server extends Thread
 
     /* main server loop */
     while(running) {
+    	listServer();
  //      out.list("wait: ");
       server_comm.receive(0) ; // wait for a request
 //       out.list("GOT:");
@@ -668,13 +669,14 @@ class Regestry_server extends Thread
   }
   
   void deleteServer()	{
-	  server_map.remove(new String(serverName));
+	  server_map.remove(new String(request_message.serverName));
 	  int counter=0;
 	  Iterator<Map.Entry<String, serverContainer>> entries = server_map.entrySet().iterator();
 	  while(entries.hasNext())
 	  {
 		  if( counter == nextServer%server_map.size())
 		  {
+			  nextServer++;
 			  Map.Entry<String, serverContainer> entry = entries.next();
 			  request_message.id+=100000 ;
 		      answer_message=request_message ;
@@ -694,6 +696,20 @@ class Regestry_server extends Thread
 		  }
 		  counter++;
 	  }
+  }
+  
+  void listServer()	{
+	  out.listln("List all Servers:");
+	  Iterator<Map.Entry<String, serverContainer>> entries = server_map.entrySet().iterator();
+	  while(entries.hasNext())
+	  {
+		  nextServer++;
+		  Map.Entry<String, serverContainer> entry = entries.next();
+		  out.listln(entry.getValue().serverName);
+
+	  }
+	  out.listln("");
+
   }
   
   class serverContainer	{
@@ -770,11 +786,11 @@ class TimeClient {
 		}
 		while(retry);
 		
+		timeServerName=RX_Report_message.serverName;
 		try {timeServerAddress=InetAddress.getByName(RX_Report_message.ip);}
 		catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
-		
 		timeServer_port=RX_Report_message.port;
-		out.listln("New Timeserver "+RX_Report_message.serverName+"\nIP:"+timeServerAddress.toString().substring(1)+" Port:"+timeServer_port) ;
+		out.listln("New Timeserver "+timeServerName+"\nIP:"+timeServerAddress.toString().substring(1)+" Port:"+timeServer_port) ;
   }
 
   
@@ -808,6 +824,7 @@ class TimeClient {
 		timeout--;
 		if(timeout == 0)	{
 			out.listln("No answer from "+RX_Time_message.serverName+"!!!\nTry to get another.");
+			timeout=3;
 			server_request();
 		}
 	}
@@ -866,11 +883,9 @@ void start()
    server_b.start() ;
 
    
-   TimeClient client_a=new TimeClient("Client A", global_network, server_a_address,regestry_server_port,4555) ;
+   TimeClient client_a=new TimeClient("Client A", global_network, regestry_server_address,regestry_server_port,4555) ;
 
-   try{ server_b_address = InetAddress.getByName("127.0.0.1");   }
-   catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
-   TimeClient client_b=new TimeClient("Client B", global_network, server_b_address,regestry_server_port,4556) ;
+//   TimeClient client_b=new TimeClient("Client B", global_network, server_b_address,regestry_server_port,4556) ;
   
 
   }
