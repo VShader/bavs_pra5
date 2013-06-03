@@ -468,6 +468,9 @@ class time_server extends Thread
     	while(running) {
     		sendTime();
     	}
+    	try { sleep(100); }
+    	catch(Exception ex) { System.out.print("caught "+ex) ; System.exit(0) ; }
+    	out.listln("Server "+serverName+" stopped!!!");
     }
   }
     
@@ -877,9 +880,8 @@ void start()
    regServer.start();
    
    server_a_port=2345 ;
-   time_server server_a=new time_server("Server A", global_network, regestry_server_address, 
+   TimeWindow server_a=new TimeWindow("Server A", global_network, regestry_server_address, 
 		   								regestry_server_port, server_a_address, server_a_port) ;
-   server_a.start() ;
    
    server_b_port=2346 ;
    TimeWindow server_b=new TimeWindow("Server B", global_network, regestry_server_address, 
