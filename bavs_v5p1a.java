@@ -433,7 +433,7 @@ class time_server extends Thread
   int port;
   InetAddress regestryIp;
   int regestryPort;
-  boolean running;
+  public boolean running;
   int lastID;
 
   InetAddress answer_address ;
@@ -533,7 +533,7 @@ class TimeWindow extends Frame {
 	  TextArea the_text=new TextArea() ;
 	  Font listFont=new Font("Monospaced",Font.PLAIN,12) ;
 	  String last_line ;
-	  TimeClient client ;
+	  time_server server ;
 	  TextField nameField=new TextField(20) ;
 	  TextField matrField=new TextField(8) ;
 
@@ -558,47 +558,53 @@ class TimeWindow extends Frame {
 
 TimeWindow(  String title ,
       NetworkSimulator network ,
+      InetAddress regestry_server_address,
+      int regestry_server_port,
       InetAddress server_address ,
-      int server_port ,
       int my_own_port ) {
 super(title) ;
 
 /* GUI related things ... */
 setSize(500,170) ;
 Panel pan_a=new Panel() ;
-Button enter_but=new Button("ENTER") ;
-pan_a.add(enter_but)  ;
+Button start_but=new Button("Start") ;
+Button stop_but=new Button("Stop") ;
+pan_a.add(start_but)  ;
+pan_a.add(stop_but)  ;
 
 /* connect buttons with actions */
-enter_but.addActionListener(new enter_listener());
+start_but.addActionListener(new start_listener());
+stop_but.addActionListener(new stop_listener());
 
 /* global layout */
-Label ln=new Label("SMS:") ;
-Label lm=new Label("NUMBER:") ;
-Panel pan_b=new Panel() ;
-pan_b.add(lm) ;  pan_b.add(matrField) ;
-pan_b.add(ln) ;  pan_b.add(nameField) ;
 setLayout(new BorderLayout()) ;
 add("Center",the_text) ;
 add("South",pan_a) ;
-add("North",pan_b) ;
+//add("North",pan_b) ;
 //deprecation    show();
 setVisible(true) ;
 /* supply a listing window to the client_object */
-OutputFrame out=new OutputFrame("history of "+title) ;
+//OutputFrame out=new OutputFrame("Status "+title) ;
 
 /* and install client */
-//client=new TimeClient(server_address,server_port,my_own_port,network,out) ;
+server=new time_server(title, network, regestry_server_address, regestry_server_port, 
+	server_address, my_own_port);
+server.start();
 }
 
-class enter_listener implements ActionListener
+class start_listener implements ActionListener
 { public void actionPerformed(ActionEvent e)
-{ listln("ENTER") ;
-String name=nameField.getText() ;
-listln("SMS="+name) ;
-String s=matrField.getText() ;
-int matrikel =Integer.valueOf(s).intValue() ;
-client.time_request();
+{ listln("Start") ;
+//String name=nameField.getText() ;
+server.running = true;
+}
+}
+
+class stop_listener implements ActionListener
+{ public void actionPerformed(ActionEvent e)
+{ listln("Stop") ;
+//String name=nameField.getText() ;
+server.running = false;
 }
 }
 
@@ -874,11 +880,10 @@ void start()
    time_server server_a=new time_server("Server A", global_network, regestry_server_address, 
 		   								regestry_server_port, server_a_address, server_a_port) ;
    server_a.start() ;
-
+   
    server_b_port=2346 ;
-   time_server server_b=new time_server("Server B", global_network, regestry_server_address, 
+   TimeWindow server_b=new TimeWindow("Server B", global_network, regestry_server_address, 
 				regestry_server_port, server_b_address, server_b_port) ;
-   server_b.start() ;
 
    
    TimeClient client_a=new TimeClient("Client A", global_network, regestry_server_address,regestry_server_port,4555) ;
@@ -886,12 +891,6 @@ void start()
    
    TimeClient client_b=new TimeClient("Client B", global_network, regestry_server_address,regestry_server_port,4556) ;
    client_b.start();
-   
-   TimeClient client_c=new TimeClient("Client C", global_network, regestry_server_address,regestry_server_port,4557) ;
-   client_c.start();
-   
-   TimeClient client_d=new TimeClient("Client D", global_network, regestry_server_address,regestry_server_port,4558) ;
-   client_d.start();
   }
 } // end class client_server_test
 
